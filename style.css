@@ -1,0 +1,28 @@
+body {
+    overflow: hidden;
+    margin: 0;
+}
+
+#canvas {
+    background-color: #f6f6f6;
+}
+
+#menu {
+    width: 300px;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 10px;
+
+    background-color: #ffffff;
+    border-radius: 10px;
+}
+
+#menu input {
+    width: 100%;
+}
+
+#menu label, input {
+    display: flex;
+    flex-direction: column;
+}
