@@ -1,6 +1,8 @@
 var canvas = document.getElementById("canvas");
 var menu = document.getElementById("menu");
 var nodeTextInput = document.getElementById("node-text-input");
+var addSubNode = document.getElementById("add-sub-node");
+
 var ctx = canvas.getContext("2d");
 
 var centralUUID = crypto.randomUUID()
@@ -12,38 +14,6 @@ var nodes = [
         uuid: centralUUID,
         x: 0,
         y: 0
-    },
-    {
-        type: "text",
-        text: "Child 1",
-        uuid: crypto.randomUUID(),
-        parent: centralUUID,
-        x: 0,
-        y: 40
-    },
-    {
-        type: "text",
-        text: "Child 2",
-        uuid: crypto.randomUUID(),
-        parent: centralUUID,
-        x: -100,
-        y: 0
-    },
-    {
-        type: "text",
-        text: "Child 3",
-        uuid: crypto.randomUUID(),
-        parent: centralUUID,
-        x: 200,
-        y: 0
-    },
-    {
-        type: "text",
-        text: "Child 4",
-        uuid: crypto.randomUUID(),
-        parent: centralUUID,
-        x: 0,
-        y: -40
     }
 ]
 
@@ -65,6 +35,8 @@ var mouseY = 0;
 var hasNodeSelected = false;
 var selectedNodeId = "";
 var selectNodeIndex = -1;
+
+var colors = ["#FF6D6A", "#EFBE7D", "#E9EC6B", "#77DD77", "#8BD3E6", "#B1A2CA"]
 
 canvas.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -124,12 +96,34 @@ document.addEventListener("keydown", (e) => {
     if (e.key == "Delete" && hasNodeSelected) {
         nodes = nodes.filter(node => node.uuid != selectedNodeId)
     }
+
+    else if (e.key == "s" && e.ctrlKey) {
+        e.preventDefault()
+        console.log(JSON.stringify(nodes))
+    }
 }, false)
 
 nodeTextInput.addEventListener("input", (e) => {
     if (hasNodeSelected) {
         nodes[selectNodeIndex].text = nodeTextInput.value
     }
+})
+
+addSubNode.addEventListener("click", (e) => {
+    var uuid = crypto.randomUUID()
+
+    nodes.push({
+        type: "text",
+        text: "",
+        uuid: uuid,
+        parent: selectedNodeId,
+        x: nodes[selectNodeIndex].x,
+        y: nodes[selectNodeIndex].y + 100
+    })
+
+    selectedNodeId = uuid;
+    selectNodeIndex = nodes.length - 1
+    nodeTextInput.value = nodes[selectNodeIndex].text
 })
 
 function draw() {
@@ -162,7 +156,7 @@ function drawNode(node) {
         }
 
         ctx.beginPath();
-        ctx.fillStyle = node.parent != undefined ? "white" : "rgb(226 232 240)";
+        ctx.fillStyle = colors[getDepth(node)];
         ctx.roundRect(node.x + camX - padding, node.y + camY + padding, width + padding * 2, height - padding * 2, 5);  
         ctx.fill()
 
@@ -183,7 +177,7 @@ function drawLines(node) {
 
         ctx.lineTo(otherPoint.x, otherPoint.y);
         ctx.lineWidth = 1;
-        ctx.strokeStyle = "rgb(100 116 139)";
+        ctx.strokeStyle = colors[getDepth(otherNode)];
         ctx.stroke()
     }
 }
@@ -215,6 +209,17 @@ function isSelected(node) {
 
         if (mouseX > x1 && mouseX < x2 && mouseY > y1 && mouseY < y2) return true;
         else return false;
+    }
+}
+
+function getDepth(node) {
+    var depth = 0;
+
+    while (true) {
+        if (!node.parent) return depth;
+
+        node = nodes[nodes.findIndex(otherNode => otherNode.uuid == node.parent)]
+        depth++;
     }
 }
 
