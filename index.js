@@ -1,29 +1,27 @@
 var canvas = document.getElementById("canvas");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+var ctx = canvas.getContext("2d");
+ctx.mozImageSmoothingEnabled = true;
+ctx.imageSmoothingEnabled = true;
+
+var padding = 10;
+let width = canvas.width;
+let height = canvas.height;
+
 var menu = document.getElementById("menu");
 var nodeTextInput = document.getElementById("node-text-input");
 var addSubNode = document.getElementById("add-sub-node");
 
-var ctx = canvas.getContext("2d");
+var openProjectMenu = document.getElementById("open-project")
+var openFileButton = document.getElementById("open-file");
+var newFileButton = document.getElementById("new-file");
+var saveFileButton = document.getElementById("save-file");
 
-var centralUUID = crypto.randomUUID()
+var exportPngButton = document.getElementById("export-png");
 
-var nodes = [
-    {
-        type: "text",
-        text: "Central Node",
-        uuid: centralUUID,
-        x: 0,
-        y: 0
-    }
-]
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-var padding = 10;
-
-let width = canvas.width;
-let height = canvas.height;
+var nodes = []
 
 let camX = width / 2;
 let camY = height / 2;
@@ -36,13 +34,27 @@ var hasNodeSelected = false;
 var selectedNodeId = "";
 var selectNodeIndex = -1;
 
+var scale = 1
+
+var fileHandle = undefined;
+var unsavedChanges = true;
+
 var colors = ["#FF6D6A", "#EFBE7D", "#E9EC6B", "#77DD77", "#8BD3E6", "#B1A2CA"]
 
+window.addEventListener("resize", (e) => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    width = canvas.width
+    height = canvas.height
+})
+
 canvas.addEventListener("mousedown", (e) => {
+    if (fileHandle == undefined) return
     e.preventDefault();
     mouseDown = true;
-    mouseX = e.clientX;
-    mouseY = e.clientY;
+    mouseX = e.clientX / scale;
+    mouseY = e.clientY / scale;
 
     for (var i = 0; i < nodes.length; i++) {
         if (isSelected(nodes[i])) {
@@ -65,19 +77,21 @@ canvas.addEventListener("mousedown", (e) => {
 }, false)
 
 canvas.addEventListener("mouseup", (e) => {
+    if (fileHandle == undefined) return
     e.preventDefault();
     mouseDown = false;
 }, false)
 
 canvas.addEventListener("mousemove", (e) => {
+    if (fileHandle == undefined) return
     if (!mouseDown) return;
     e.preventDefault();
 
-    var deltaX = e.clientX - mouseX;
-    var deltaY = e.clientY - mouseY;
+    var deltaX = e.clientX / scale - mouseX;
+    var deltaY = e.clientY / scale - mouseY;
 
-    mouseX = e.clientX;
-    mouseY = e.clientY;
+    mouseX = e.clientX / scale;
+    mouseY = e.clientY / scale;
 
     // Node Dragging
     if (mouseDown && hasNodeSelected) {
@@ -92,16 +106,34 @@ canvas.addEventListener("mousemove", (e) => {
     }
 }, false)
 
-document.addEventListener("keydown", (e) => {
+document.addEventListener("wheel", (e) => {
+    if (fileHandle == undefined) return
+
+    var originalScale = scale
+    scale *= 1 + (-e.deltaY / 1000);
+
+    if (scale > 1) scale = 1;
+
+    camX -= ((scale - originalScale) * width) / 2
+    camY -= ((scale - originalScale) * height) / 2
+})
+
+document.addEventListener("keydown", async (e) => {
+    if (fileHandle == undefined) return
+
     if (e.key == "Delete" && hasNodeSelected) {
         nodes = nodes.filter(node => node.uuid != selectedNodeId)
     }
 
     else if (e.key == "s" && e.ctrlKey) {
         e.preventDefault()
-        console.log(JSON.stringify(nodes))
+        await saveMindmap()
     }
 }, false)
+
+saveFileButton.addEventListener("click", async() => {
+    await saveMindmap()
+})
 
 nodeTextInput.addEventListener("input", (e) => {
     if (hasNodeSelected) {
@@ -128,7 +160,10 @@ addSubNode.addEventListener("click", (e) => {
 
 function draw() {
     window.requestAnimationFrame(draw);
+
+    ctx.resetTransform()
     ctx.clearRect(0, 0, width, height);
+    ctx.scale(scale, scale)
 
     for (var i = 0; i < nodes.length; i++) {
         drawLines(nodes[i])
@@ -157,7 +192,7 @@ function drawNode(node) {
 
         ctx.beginPath();
         ctx.fillStyle = colors[getDepth(node)];
-        ctx.roundRect(node.x + camX - padding, node.y + camY + padding, width + padding * 2, height - padding * 2, 5);  
+        ctx.roundRect(node.x + camX - padding, node.y + camY + padding, width + padding * 2, height - padding * 2, 5);
         ctx.fill()
 
         ctx.fillStyle = "black";
@@ -223,4 +258,104 @@ function getDepth(node) {
     }
 }
 
+async function saveMindmap() {
+    try {
+        const writeable = await fileHandle.createWritable()
+        await writeable.write(JSON.stringify(nodes))
+        await writeable.close()
+        console.log("Saved!")
+    }
+
+    catch (e) {
+        console.error(e)
+    }
+}
+
 draw()
+
+const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+
+const getFileHandle = async () => {
+    try {
+        const [handle] = await window.showOpenFilePicker({
+            types: [
+                {
+                    description: "Mindmap file",
+                    accept: {
+                        "text/mindmap": [".mm"]
+                    }
+                }
+            ]
+        })
+        return handle
+    }
+
+    catch (e) {
+        console.error(e)
+    }
+}
+
+const createFileHandle = async () => {
+    try {
+        const handle = await window.showSaveFilePicker({
+            types: [
+                {
+                    description: "Mindmap file",
+                    accept: {
+                        "text/mindmap": [".mm"]
+                    }
+                }
+            ]
+        })
+
+        return handle
+    }
+
+    catch (e) {
+        console.error(e)
+    }
+}
+
+openFileButton.addEventListener("click", async () => {
+    if (fileHandle != undefined) await saveMindmap()
+
+    fileHandle = await getFileHandle()
+
+    var fileText = await (await fileHandle.getFile()).text()
+
+    nodes = JSON.parse(fileText)
+})
+
+newFileButton.addEventListener("click", async () => {
+    if (fileHandle != undefined) await saveMindmap()
+
+    fileHandle = await createFileHandle()
+
+    nodes = [
+        { 
+            "type": "text", 
+            "text": "New Mindmap", 
+            "uuid": crypto.randomUUID(), 
+            "x": 0, "y": 0
+        }
+    ]
+})
+
+exportPngButton.addEventListener("click", async () => {
+    const handle = await window.showSaveFilePicker({
+        types: [
+            {
+                description: "PNG",
+                accept: {
+                    "image/png": [".png"]
+                }
+            }
+        ]
+    })
+
+    canvas.toBlob(async (blob) => {
+        const writeable = await handle.createWritable()
+        await writeable.write(blob)
+        await writeable.close()
+    })
+})
