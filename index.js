@@ -11,6 +11,8 @@ let width = canvas.width;
 let height = canvas.height;
 
 var menu = document.getElementById("menu");
+var mobileErrorMenu = document.getElementById("mobile-error")
+
 var nodeTextInput = document.getElementById("node-text-input");
 var addSubNode = document.getElementById("add-sub-node");
 var deleteNode = document.getElementById("delete-node");
@@ -402,3 +404,7 @@ exportPngButton.addEventListener("click", async () => {
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 })
+
+if (!window.chrome) {
+    mobileErrorMenu.hidden = false
+}
