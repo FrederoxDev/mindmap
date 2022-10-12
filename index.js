@@ -200,6 +200,14 @@ function drawNode(node) {
     }
 }
 
+function getSize(node) {
+    var box = ctx.measureText(node.text)
+    var width = box.width + 50;
+    var height = -box.actualBoundingBoxAscent + -box.actualBoundingBoxDescent - 50;
+
+    return {width, height}
+}
+
 function drawLines(node) {
     if (node.type == "text" && node.parent != undefined) {
         ctx.beginPath()
@@ -353,9 +361,33 @@ exportPngButton.addEventListener("click", async () => {
         ]
     })
 
+    var miX, maX, miY, maY;
+
+    nodes.forEach((node) => {
+        var prop = getSize(node)
+
+        if (node.x + prop.width > maX || maX == undefined) maX = node.x + prop.width
+        if (node.x - prop.width < miX || miX == undefined) miX = node.x - prop.width
+        if (node.y + prop.height < miY || miY == undefined) miY = node.y + prop.height
+        if (node.y - prop.height > maY || maY == undefined) maY = node.y - prop.height
+    })
+
+    camX = -miX
+    camY = -miY
+
+    canvas.width = maX + -miX
+    canvas.height = maY + -miY
+
+    scale = 1
+
+    draw()
+
     canvas.toBlob(async (blob) => {
         const writeable = await handle.createWritable()
         await writeable.write(blob)
         await writeable.close()
     })
+
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
 })
