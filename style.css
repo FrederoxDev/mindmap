@@ -52,6 +52,11 @@ body {
     vertical-align: middle;
 }
 
+#open-project a {
+    position: absolute;
+    right: 10px;
+}
+
 #version {
     position: absolute;
     left: 0;
