@@ -13,6 +13,7 @@ let height = canvas.height;
 var menu = document.getElementById("menu");
 var nodeTextInput = document.getElementById("node-text-input");
 var addSubNode = document.getElementById("add-sub-node");
+var deleteNode = document.getElementById("delete-node");
 
 var openProjectMenu = document.getElementById("open-project")
 var openFileButton = document.getElementById("open-file");
@@ -108,21 +109,16 @@ canvas.addEventListener("mousemove", (e) => {
 
 document.addEventListener("wheel", (e) => {
     if (fileHandle == undefined) return
-
-    var originalScale = scale
     scale *= 1 + (-e.deltaY / 1000);
-
     if (scale > 1) scale = 1;
-
-    camX -= ((scale - originalScale) * width) / 2
-    camY -= ((scale - originalScale) * height) / 2
 })
 
 document.addEventListener("keydown", async (e) => {
     if (fileHandle == undefined) return
 
     if (e.key == "Delete" && hasNodeSelected) {
-        nodes = nodes.filter(node => node.uuid != selectedNodeId)
+        if (nodes[selectNodeIndex].parent == undefined) return alert("Cannot delete central node!")
+        deleteNodeAndChildren(selectedNodeId)
     }
 
     else if (e.key == "s" && e.ctrlKey) {
@@ -130,6 +126,21 @@ document.addEventListener("keydown", async (e) => {
         await saveMindmap()
     }
 }, false)
+
+deleteNode.addEventListener("click", (e) => {
+    if (nodes[selectNodeIndex].parent == undefined) return alert("Cannot delete central node!")
+    deleteNodeAndChildren(selectedNodeId)
+})
+
+function deleteNodeAndChildren(nodeUUID) {
+    nodes = nodes.filter(node => node.uuid != nodeUUID)
+
+    var children = nodes.filter(node => node.parent == nodeUUID)
+
+    for (child of children) {
+        deleteNodeAndChildren(child.uuid)
+    }
+}
 
 saveFileButton.addEventListener("click", async() => {
     await saveMindmap()
