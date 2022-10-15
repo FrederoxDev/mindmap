@@ -151,8 +151,16 @@ saveFileButton.addEventListener("click", async() => {
 nodeTextInput.addEventListener("input", (e) => {
     if (hasNodeSelected) {
         nodes[selectNodeIndex].text = nodeTextInput.value
+
+        if (nodes[selectNodeIndex].parent == undefined) {
+            updateWindowTitle()
+        }
     }
 })
+
+function updateWindowTitle() {
+    window.document.title = "Mindmap | " + nodes.find(node => node.parent == undefined).text
+}
 
 addSubNode.addEventListener("click", (e) => {
     var uuid = crypto.randomUUID()
@@ -334,17 +342,41 @@ const createFileHandle = async () => {
 
     catch (e) {
         console.error(e)
+        
+        if (e.stack == "Error: The user aborted a request.") {
+            alert("Creating file cancelled!")
+        }
+
+        else {
+            alert("Error" + e.stack)
+        }
     }
 }
 
 openFileButton.addEventListener("click", async () => {
-    if (fileHandle != undefined) await saveMindmap()
+    try {
+        if (fileHandle != undefined) await saveMindmap()
 
-    fileHandle = await getFileHandle()
+        fileHandle = await getFileHandle()
 
-    var fileText = await (await fileHandle.getFile()).text()
+        var fileText = await (await fileHandle.getFile()).text()
 
-    nodes = JSON.parse(fileText)
+        nodes = JSON.parse(fileText)
+
+        updateWindowTitle()
+    }
+    
+    catch (e) {
+        console.error(e)
+
+        if (e.stack == "Error: The user aborted a request.") {
+            alert("Opening file cancelled!")
+        }
+
+        else {
+            alert("Error" + e.stack)
+        }
+    }
 })
 
 newFileButton.addEventListener("click", async () => {
